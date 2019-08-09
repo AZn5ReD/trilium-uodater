@@ -1,2 +1,2 @@
-# trilium-uodater
+# trilium-updater
 Automate update for zadam/trilium client
