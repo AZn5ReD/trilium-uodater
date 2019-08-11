@@ -11,26 +11,40 @@ import (
 	"strings"
 
 	"github.com/google/go-github/github"
+	"github.com/mholt/archiver"
 )
 
 // https://api.github.com/repos/zadam/trilium/releases/latest
 
 const repoUser string = "zadam"
 const repoName string = "trilium"
-const path string = "./"
+const path string = "../"
 
 func main() {
+	log.Println("Starting Trilium updater")
 	platform := getPlatform()
 
-	name, url, err := getDownloadUrl(platform)
+	filename, url, err := getDownloadUrl(platform)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	err = downloadFile(name, url)
+	err = downloadFile(filename, url)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	err = unarchiveFile(filename)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = cleanup(filename)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Println("Update successful !")
 }
 
 func getPlatform() string {
@@ -59,6 +73,7 @@ func getDownloadUrl(platform string) (string, string, error) {
 		return "", "", err
 	}
 
+	log.Println("Looking for relevant asset...")
 	var asset github.ReleaseAsset
 	for _, ass := range service.Assets {
 		if strings.HasPrefix(*ass.Name, repoName+"-"+platform) && !(strings.Contains(*ass.Name, "server")) {
@@ -67,7 +82,7 @@ func getDownloadUrl(platform string) (string, string, error) {
 		}
 	}
 	if asset.Name == nil {
-		return "", "", errors.New("Couldn't find asset")
+		return "", "", errors.New("Couldn't find relevant asset")
 	}
 
 	log.Println("Getting download url")
@@ -101,5 +116,39 @@ func downloadFile(filename string, url string) error {
 	if err == nil {
 		log.Println("Download successful !")
 	}
+	return err
+}
+
+func unarchiveFile(filename string) error {
+	log.Println("Detect extension...")
+	ar, err := archiver.ByExtension(filename)
+	if err != nil {
+		return err
+	}
+	log.Println(ar)
+
+	log.Println("Setting overwrite")
+	switch ar.(type) {
+	case *archiver.TarXz:
+		ar = &archiver.TarXz{Tar: &archiver.Tar{OverwriteExisting: true}}
+	case *archiver.Zip:
+		ar = &archiver.Zip{OverwriteExisting: true}
+	default:
+		return errors.New("Can't detect extension")
+	}
+
+	log.Println("Extracting archive...")
+	err = ar.(archiver.Unarchiver).Unarchive(path+filename, path)
+	if err == nil {
+		log.Println("Done !")
+	}
+	return err
+}
+
+func cleanup(filename string) error {
+	filepath := path + filename
+
+	log.Println("Deleting archive")
+	err := os.Remove(filepath)
 	return err
 }
