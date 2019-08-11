@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# Linux
+env GOOS=linux GOARCH=amd64 go build -o output/trilium-update-linux 
+tar -C output -czf output/trilium-update-linux.tar.gz trilium-update-linux
+rm output/trilium-update-linux
+
+# Windows
+env GOOS=windows GOARCH=amd64 go build -o output/trilium-update-windows.exe
+zip -j output/trilium-update-windows.zip output/trilium-update-windows.exe
+rm output/trilium-update-windows.exe
+
+# Mac
+env GOOS=darwin GOARCH=amd64 go build -o output/trilium-update-mac
+tar -C output -czf output/trilium-update-mac.tar.gz trilium-update-mac
+rm output/trilium-update-mac
